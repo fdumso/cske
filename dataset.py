@@ -1,7 +1,7 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from SPARQLWrapper import SPARQLWrapper, JSON
+from SPARQLWrapper import SPARQLWrapper, JSON, XML
 """
     
 """
@@ -19,12 +19,15 @@ def get_categories(entity_id):
     """
     dbpedia_sql = """
 PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX dbo: <http://dbpedia.org/ontology>
 SELECT DISTINCT ?category
 WHERE {
-    <%s> dcterms:subject ?category .
+    {<%s> dcterms:subject ?category .}
+    UNION
+    {<%s> dbo:category ?category .}
 }
 ORDER BY ?category
-    """%(entity_id)
+    """%(entity_id, entity_id)
     results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)['results']['bindings']
     return [result['category']['value'] for result in results]
 
@@ -74,6 +77,16 @@ def get_csks(entity_id):
     # TODO
     pass
 
+def get_all_so(property_id):
+    dbpedia_sql = """
+SELECT ?s
+WHERE{
+    ?s <%s> ?o .
+}
+    """%(property_id)
+    results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)['results']['bindings']
+    return [ result['s']['value'] for result in results ]
+
 def __execute_sparql(endpoint, sql):
     sparql = SPARQLWrapper(endpoint)
     sparql.setQuery(sql)
@@ -90,4 +103,6 @@ if __name__ == '__main__':
     print "---pv pairs---"
     for pair in get_pv_pairs('http://dbpedia.org/resource/Eiffel_Tower'):
         print pair
-    
+    print "---'abstract'_is_multi_value---"
+    pairs = get_all_so(u'http://dbpedia.org/ontology/abstract')
+    print len(pairs) > len(set(pairs))

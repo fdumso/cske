@@ -6,7 +6,9 @@
 """
 from collections import Counter
 
-import dataset
+from . import dataset
+
+import numpy
 __author__ = "freemso"
 
 
@@ -73,12 +75,12 @@ class Node(object):
         """
         :param uuid: universal identifier
         """
-        self.uuid = uuid
-        self.parents = None
-        self.siblings = None
-        self.attributes = None  # CSK from ConceptNet and PV-pairs from DB-pedia are all considered as attributes
-        self.extracted_attributes = None  # Newly extracted attributes during this extraction process
-        self.extracted_correct_attributes = None  # Attributes that are considered as correct after validation
+        self.uuid = uuid # uri
+        self.parents = []
+        self.siblings = []
+        self.attributes = []  # CSK from ConceptNet and PV-pairs from DB-pedia are all considered as attributes
+        self.extracted_attributes = []  # Newly extracted attributes during this extraction process
+        self.extracted_correct_attributes = []  # Attributes that are considered as correct after validation
 
     def __eq__(self, other):
         return hasattr(other, "uuid") and self.uuid == other.uuid
@@ -155,9 +157,8 @@ class Edge(object):
         predicates that occur more than once are treated as multi-value attributes.
         :return: <bool>
         """
-        # TODO
-        pass
-
+        pairs = dataset.get_all_so(self.uuid)
+        return len(pairs) > len(set(pairs))
 
 def immediate_category_filter(category_nodes):
     """
@@ -166,8 +167,12 @@ def immediate_category_filter(category_nodes):
     :param category_nodes: <list> of <Node>
     :return: <list> of <Node>, with no hierarchy conflict(granularity)
     """
-    # TODO
-    pass
+    origin = category_nodes[:]
+    result = category_nodes[:]
+
+    for id in origin:
+        cur_cate = dataset.get_categories(id) # Does Category has parent category?
+        result = list( set(result) - (set(result) & set(cur_cate)) )
 
 if __name__ == '__main__':
     pass
