@@ -77,7 +77,7 @@ def get_csks(entity_id):
     # TODO
     pass
 
-def get_all_so(property_id):
+def get_all_subjects(property_id):
     dbpedia_sql = """
 SELECT ?s
 WHERE{
@@ -87,6 +87,50 @@ WHERE{
     results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)['results']['bindings']
     return [ result['s']['value'] for result in results ]
 
+def get_all_type_member(type_id):
+    dbpedia_sql = """
+    PREFIX dbo: <http://dbpedia.org/ontology>
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    SELECT DISTINCT ?subject
+    WHERE {
+       {?subject dbo:type <%s> .}
+       UNION
+       {?subject rdf:type <%s> .}
+    }
+    ORDER BY ?type
+        """ % (type_id, type_id)
+    results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)['results']['bindings']
+    return [result['subject']['value'] for result in results]
+
+def get_resource_name(res_id):
+    dbpedia_sql = """
+        PREFIX dbo: <http://dbpedia.org/ontology>
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        SELECT DISTINCT ?name
+        WHERE {
+            {<%s> foaf:name ?name . }
+            UNION
+            {<%s> rdfs:label ?name . }
+        }""" % (res_id, res_id)
+    results = __execute_sparql(dbpedia_sql)
+    return [result['name']['value'] for result in results]
+
+def get_parent_class(class_id):
+    dbpedia_sql = """
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema>
+            SELECT DISTINCT ?o
+            FROM NAMED <http://dbpedia.org/resource/classes#>
+            WHERE {
+                GRAPH <http://dbpedia.org/resource/classes#>{
+                    <%s> rdfs:subClassOf ?o
+                }
+            }
+    """%(class_id)
+
+    results = __execute_sparql(dbpedia_sql)['results']['bindings']
+    return [result['o']['value'] for result in results]
+
 def __execute_sparql(endpoint, sql):
     sparql = SPARQLWrapper(endpoint)
     sparql.setQuery(sql)
@@ -94,15 +138,18 @@ def __execute_sparql(endpoint, sql):
     return sparql.query().convert()
 
 if __name__ == '__main__':
-    print "---category---"
-    for cate in get_categories('http://dbpedia.org/resource/Eiffel_Tower'):
-        print cate
-    print "---type---"
-    for type in get_types('http://dbpedia.org/resource/Eiffel_Tower'):
-        print type
-    print "---pv pairs---"
-    for pair in get_pv_pairs('http://dbpedia.org/resource/Eiffel_Tower'):
-        print pair
-    print "---'abstract'_is_multi_value---"
-    pairs = get_all_so(u'http://dbpedia.org/ontology/abstract')
-    print len(pairs) > len(set(pairs))
+    #print "---category---"
+    #for cate in get_categories('http://dbpedia.org/resource/Eiffel_Tower'):
+    #    print cate
+    #print "---type---"
+    #for type in get_types('http://dbpedia.org/resource/Eiffel_Tower'):
+    #    print type
+    #print "---pv pairs---"
+    #for pair in get_pv_pairs('http://dbpedia.org/resource/Eiffel_Tower'):
+    #    print pair
+    #print "---'abstract'_is_multi_value---"
+    #pairs = get_all_subjects(u'http://dbpedia.org/ontology/abstract')
+    #print len(pairs) > len(set(pairs))
+    print "---Arch structure type member---"
+    for m in get_all_type_member("http://dbpedia.org/ontology/ArchitecturalStructure"):
+        print m

@@ -76,11 +76,11 @@ class Node(object):
         :param uuid: universal identifier
         """
         self.uuid = uuid # uri
-        self.parents = []
-        self.siblings = []
-        self.attributes = []  # CSK from ConceptNet and PV-pairs from DB-pedia are all considered as attributes
-        self.extracted_attributes = []  # Newly extracted attributes during this extraction process
-        self.extracted_correct_attributes = []  # Attributes that are considered as correct after validation
+        self.parents = None
+        self.siblings = None
+        self.attributes = None  # CSK from ConceptNet and PV-pairs from DB-pedia are all considered as attributes
+        self.extracted_attributes = None  # Newly extracted attributes during this extraction process
+        self.extracted_correct_attributes = None  # Attributes that are considered as correct after validation
 
     def __eq__(self, other):
         return hasattr(other, "uuid") and self.uuid == other.uuid
@@ -93,8 +93,8 @@ class Node(object):
         Get a human readable name of the node
         :return: <str>
         """
-        # TODO
-        pass
+        names = dataset.get_resource_name(self.uuid)
+        return names[0] if len(names)>0 else self.uuid
 
     def get_parents(self):
         """
@@ -102,8 +102,11 @@ class Node(object):
         :return: <list> of <Node>
         """
         if not self.parents:
-            # TODO Identify parent nodes
-            pass
+            all = [Node(id) for id in dataset.get_types(self.uuid)]
+            self.parents = all[:]
+            for p in all:
+                subClassOf = dataset.get_parent_class(p.uuid)
+                self.parents = [p for p in self.parents if p.uuid not in subClassOf]
         return self.parents
 
     def get_siblings(self):
@@ -112,8 +115,10 @@ class Node(object):
         :return: <list> of <Node>
         """
         if not self.siblings:
-            # TODO Identify sibling nodes
-            pass
+            self.siblings = []
+            for p in self.parents:
+                children = dataset.get_all_type_member(p.uuid)
+                self.siblings.append([Node(c) for c in children])
         return self.siblings
 
     def get_attributes(self):
@@ -157,7 +162,7 @@ class Edge(object):
         predicates that occur more than once are treated as multi-value attributes.
         :return: <bool>
         """
-        pairs = dataset.get_all_so(self.uuid)
+        pairs = dataset.get_all_subjects(self.uuid)
         return len(pairs) > len(set(pairs))
 
 def immediate_category_filter(category_nodes):
@@ -173,6 +178,7 @@ def immediate_category_filter(category_nodes):
     for id in origin:
         cur_cate = dataset.get_categories(id) # Does Category has parent category?
         result = list( set(result) - (set(result) & set(cur_cate)) )
+    return result
 
 if __name__ == '__main__':
     pass
