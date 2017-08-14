@@ -181,8 +181,8 @@ def is_multi_valued(property_id):
     predicates that occur more than once are treated as multi-value attributes.
     :return: <bool>
     """
-    pairs = dataset.get_all_subjects(property_id)
-    return len(pairs) > len(set(pairs))
+    n = dataset.is_multi_valued(property_id)
+    return n>0
 
 
 # def immediate_category_filter(category_nodes):
@@ -208,5 +208,6 @@ if __name__ == '__main__':
     all_parents=node.get_parents()
     for x in all_parents:
         print x.uuid
+    print is_multi_valued("dct:subject")
 
 

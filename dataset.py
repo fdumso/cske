@@ -100,6 +100,17 @@ def get_csks(entity_id):
     # TODO
     return []
 
+def is_multi_valued(property_id):
+    dbpedia_sql = """
+        SELECT ?s
+        WHERE{
+            ?s  %s ?o .
+            ?s  %s ?e .
+            FILTER(?o!=?e)
+        } limit 1
+    """ % (property_id,property_id)
+    results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)["results"]["bindings"]
+    return len([result["s"]["value"] for result in results])
 
 def get_all_subjects(property_id):
     dbpedia_sql = """
