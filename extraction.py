@@ -9,8 +9,6 @@ from collections import Counter
 
 import dataset
 
-import numpy
-
 __author__ = "freemso"
 
 # Hyper-parameters
@@ -64,13 +62,13 @@ def extract(target_uuid):
             # This attribute is valid
             pass
 
-    # Inherit from parent
-    # TODO
+            # Inherit from parent
+            # TODO
 
-    # Merge results(from parents and from siblings) and conflict detection
-    # TODO
+            # Merge results(from parents and from siblings) and conflict detection
+            # TODO
 
-    # Show the result
+            # Show the result
 
 
 def count_nodes_attributes(nodes):
@@ -110,38 +108,14 @@ class Node(object):
     def __hash__(self):
         return hash(self.uuid)
 
-    def get_name(self):
-        """
-        Get a human readable name of the node
-        :return: <str>
-        """
-        names = dataset.get_resource_name(self.uuid)
-        return names[0] if len(names) > 0 else self.uuid.rsplit("/", 1)[-1]
-
     def get_parents(self):
         """
         Get parent nodes of the target node
         :return: <list> of <Node>
         """
-        self.parents = set()
         if not self.parents:
-            all_subjects={subject_id for subject_id in dataset.get_subjects(self.uuid)}
-            all_types = {type_id for type_id in dataset.get_types(self.uuid)}
-            ontology_types=dataset.filter_get_ontology(all_types)
-            for type_id in ontology_types:
-                p=type_id
-                while True :
-                    temp = dataset.get_parent_class(p)
-                    if len(temp)==0:
-                        break
-                    else:
-                        p=temp[0]
-                        if p in all_types:
-                            all_types.remove(p)
-                        else:
-                            continue
-            all_parents=all_types|all_subjects
-            self.parents = [id2node(parent_id) for parent_id in all_parents]
+            # TODO
+            pass
         return self.parents
 
     def get_siblings(self):
@@ -152,7 +126,7 @@ class Node(object):
         if not self.siblings:
             self.siblings = set()
             for p in self.parents:
-                children = dataset.get_all_type_member(p.uuid)
+                children = dataset.get_type_members(p.uuid)
                 self.siblings = self.siblings.union({id2node(c) for c in children})
         return self.siblings
 
@@ -174,40 +148,6 @@ class Node(object):
             return self.attributes
 
 
-def is_multi_valued(property_id):
-    """
-    Check if the edge is multi-valued.
-    Calculate all predicates of <SPO> in DB-pedia, those objectives values of
-    predicates that occur more than once are treated as multi-value attributes.
-    :return: <bool>
-    """
-    n = dataset.is_multi_valued(property_id)
-    return n>0
-
-
-# def immediate_category_filter(category_nodes):
-#     """
-#     Filter out those categories who are at a higher level in the hierarchy.
-#     Hierarchy information is available in DB-pedia Ontology.
-#     :param category_nodes: <list> of <Node>
-#     :return: <list> of <Node>, with no hierarchy conflict(granularity)
-#     """
-#     origin = category_nodes[:]
-#     result = category_nodes[:]
-#
-#     for id in origin:
-#         cur_cate = dataset.get_categories(id)  # Does Category has parent category?
-#         result = list(set(result) - (set(result) & set(cur_cate)))
-#     return result
-
-
 if __name__ == '__main__':
     logging.basicConfig(format="%(asctime)s: %(levelname)s: %(message)s")
     logging.root.setLevel(level=logging.INFO)
-    node = id2node("http://dbpedia.org/resource/Huawei_P9")
-    all_parents=node.get_parents()
-    for x in all_parents:
-        print x.uuid
-    print is_multi_valued("dct:subject")
-
-

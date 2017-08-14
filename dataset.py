@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import logging
 import pprint
-import re
 
 from SPARQLWrapper import SPARQLWrapper, JSON
 
@@ -13,25 +12,45 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 __author__ = "freemso"
 
 DBPEDIA_ENDPOINT = "http://dbpedia.org/sparql"
+DBPEDIA_PREFIX = """
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX : <http://dbpedia.org/resource/>
+PREFIX dbr: <http://dbpedia.org/resource/>
+PREFIX dbpedia2: <http://dbpedia.org/property/>
+PREFIX dbpedia: <http://dbpedia.org/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX dbo: <http://dbpedia.org/ontology/>
+"""
 
 
 def get_categories(entity_id):
     """
-    Get all the categories of an entity from YAGO and DB-pedia.
+    Get all the categories of an entity from DB-pedia.
     :param entity_id: universal identifier of the entity
     :return: <list> of entity, each is a category of the target entity
     """
     dbpedia_sql = """
-        PREFIX dcterms: <http://purl.org/dc/terms/>
-        PREFIX dbo: <http://dbpedia.org/ontology>
+        PREFIX e: <%s>
         SELECT DISTINCT ?category
         WHERE {
-            {<%s> dcterms:subject ?category .}
+            {
+                e: dct:subject ?category .
+                FILTER NOT EXISTS {
+                    e: dct:subject ?subCategory .
+                    ?subCategory skos:broader* ?type .
+                    FILTER (?subtype != ?type)
+                }
+            }
             UNION
-            {<%s> dbo:category ?category .}
+            {e: dbo:category ?category .}
         }
-        ORDER BY ?category
-    """ % (entity_id, entity_id)
+    """ % entity_id
     results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)["results"]["bindings"]
     return [result["category"]["value"] for result in results]
 
@@ -43,36 +62,24 @@ def get_types(entity_id):
     :return: <list> of entity, each is a type of the target entity
     """
     dbpedia_sql = """
-        PREFIX dbo: <http://dbpedia.org/ontology>
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        PREFIX owl: <http://www.w3.org/2002/07/owl#>
-        PREFIX dbr: <http://dbpedia.org/resource>
+        PREFIX e: <%s>
         SELECT DISTINCT ?type
         WHERE {
-           {<%s> dbo:type ?type .}
-           UNION
-           {<%s> rdf:type ?type .}
-           UNION
-           {<%s> owl:type ?type .}
-           UNION
-           {<%s> dbr:type ?type .}
+            {e: dbo:type ?type .}
+            UNION
+            {e: rdf:type ?type .}
+            FILTER NOT EXISTS {
+                {e: dbo:type ?subtype .}
+                UNION
+                {e: rdf:type ?subtype .}
+                ?subtype rdfs:subClassOf ?type .
+                FILTER (?subtype != ?type)
+            }
         }
-        ORDER BY ?type
-    """ % (entity_id,entity_id,entity_id,entity_id)
+    """ % entity_id
     results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)["results"]["bindings"]
     return [result["type"]["value"] for result in results]
 
-def get_subjects(entity_id):
-    dbpedia_sql = """
-        PREFIX dct:<http://purl.org/dc/terms/>
-        SELECT DISTINCT ?subject
-        WHERE {
-           <%s> dct:subject ?subject .
-        }
-        ORDER BY ?subject
-    """ % entity_id
-    results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)["results"]["bindings"]
-    return [result["subject"]["value"] for result in results]
 
 def get_pv_pairs(entity_id):
     """
@@ -100,68 +107,85 @@ def get_csks(entity_id):
     # TODO
     return []
 
+
 def is_multi_valued(property_id):
+    """
+    Check if the property is multi-valued.
+    Calculate all predicates of <SPO> in DB-pedia, those objectives values of
+    predicates that occur more than once are treated as multi-value attributes.
+    :return: <bool>
+    """
     dbpedia_sql = """
-        SELECT ?s
-        WHERE{
-            ?s  %s ?o .
-            ?s  %s ?e .
-            FILTER(?o!=?e)
-        } limit 1
-    """ % (property_id,property_id)
-    results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)["results"]["bindings"]
-    return len([result["s"]["value"] for result in results])
-
-def get_all_subjects(property_id):
-    dbpedia_sql = """
-        SELECT ?s
-        WHERE{
-            ?s <%s> ?o .
+        SELECT ?s ?o1 ?o2
+        WHERE {
+            ?s  %s ?o1 .
+            ?s  %s ?o2 .
+            FILTER (?o1 != ?o2)
         }
-    """ % property_id
+        LIMIT 1
+    """ % (property_id, property_id)
     results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)["results"]["bindings"]
-    return [result["s"]["value"] for result in results]
+    return len(results) > 0
 
 
-def get_all_type_member(type_id):
+def get_type_members(type_id):
+    """
+    Get entities whose types contain <type_id>
+    :param type_id: uuid of th type
+    :return: <list> of entity
+    """
     dbpedia_sql = """
-        PREFIX dbo: <http://dbpedia.org/ontology>
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         SELECT DISTINCT ?subject
         WHERE {
            {?subject dbo:type <%s> .}
            UNION
            {?subject rdf:type <%s> .}
+           UNION
+           {?subject dbr:type <%s> .}
+           UNION
+           {?subject owl:type <%s> .}
         }
         ORDER BY ?type
-    """ % (type_id, type_id)
+    """ % (type_id, type_id, type_id, type_id)
     results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)["results"]["bindings"]
     return [result["subject"]["value"] for result in results]
 
 
-def get_resource_name(res_id):
+def get_resource_name(resource_id):
+    """
+    Get human-readable English name of the resource if available
+    :param resource_id: uuid of the resource, resource could be any entity and relation
+    :return: <str> name from dbpedia if available, extract from uuid if not
+    """
     dbpedia_sql = """
-        PREFIX dbo: <http://dbpedia.org/ontology>
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         SELECT DISTINCT ?name
         WHERE {
             {<%s> foaf:name ?name . }
             UNION
             {<%s> rdfs:label ?name . }
+            FILTER (LANG(?name) = "en")
         }
-    """ % (res_id, res_id)
+    """ % (resource_id, resource_id)
     results = __execute_sparql(DBPEDIA_ENDPOINT, dbpedia_sql)["results"]["bindings"]
-    return [result["name"]["value"] for result in results]
+    if results:
+        return results[0]["name"]["value"]
+    else:
+        return resource_id.rsplit("/", 1)[-1]
 
 
-def get_parent_class(class_id):
+def get_super_classes(class_id):
+    """
+    Get the super classes of the dbpedia class
+    :param class_id: uuid the class
+    :return: <list> of super classes
+    """
     dbpedia_sql = """
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX classes: <http://dbpedia.org/resource/classes#>
         SELECT DISTINCT ?o
-        FROM NAMED <http://dbpedia.org/resource/classes#>
+        FROM NAMED classes:
         WHERE {
-            GRAPH <http://dbpedia.org/resource/classes#>{
+            GRAPH classes: {
                 <%s> rdfs:subClassOf ?o
             }
         }
@@ -170,43 +194,61 @@ def get_parent_class(class_id):
     return [result["o"]["value"] for result in results]
 
 
-def filter_get_ontology(all_types):
-    s=set()
-    for x in all_types:
-        pattern = re.compile('http://dbpedia.org/ontology/.+')
-        match = pattern.match(x)
-        if not match:
-            s.add(x)
-    return all_types-s
-
 def __execute_sparql(endpoint, sql):
     sparql = SPARQLWrapper(endpoint)
-    sparql.setQuery(sql)
+    sparql.setQuery(DBPEDIA_PREFIX + sql)
     sparql.setReturnFormat(JSON)
     return sparql.query().convert()
 
+
 if __name__ == "__main__":
     logging.basicConfig(format="%(asctime)s: %(levelname)s: %(message)s")
-    logging.root.setLevel(level=logging.INFO)
+    logging.root.setLevel(level=logging.DEBUG)
 
-    all_subjects=get_subjects("http://dbpedia.org/resource/Tiger")
-    print all_subjects
+    # Testing
 
-    superclass=get_parent_class("http://dbpedia.org/ontology/Town")[0]
-    print superclass
+    # Test get_categories()
+    test_entity_id = "http://dbpedia.org/resource/Tiger"
+    test_entity_categories = get_categories(test_entity_id)
+    logging.debug("Categories of {}:\n{}\nTotal number: {}".format(
+        test_entity_id,
+        pprint.pformat(test_entity_categories),
+        len(test_entity_categories)
+    ))
 
-    # print "---category---"
-    # for cate in get_categories("http://dbpedia.org/resource/Eiffel_Tower"):
-    #    print cate
-    # print "---type---"
-    # for type in get_types("http://dbpedia.org/resource/Eiffel_Tower"):
-    #    print type
-    # print "---pv pairs---"
-    # for pair in get_pv_pairs("http://dbpedia.org/resource/Eiffel_Tower"):
-    #    print pair
-    # print "---"abstract"_is_multi_value---"
-    # pairs = get_all_subjects(u"http://dbpedia.org/ontology/abstract")
-    # print len(pairs) > len(set(pairs))
-    # print("---Arch structure type member---")
-    # for m in get_all_type_member("http://dbpedia.org/ontology/ArchitecturalStructure"):
-    #     print(m)
+    # Test get_types()
+    test_entity_id = "http://dbpedia.org/resource/Yao_Ming"
+    test_entity_types = get_types(test_entity_id)
+    logging.debug("Types of {}:\n{}\nTotal number: {}".format(
+        test_entity_id,
+        pprint.pformat(test_entity_types),
+        len(test_entity_types)
+    ))
+    #
+    # # Test is_multi_valued()
+    # test_property_id_1 = "dbo:wikiPageID"
+    # test_property_id_2 = "dbo:abstract"
+    # test_property_id_3 = "foaf:gender"
+    # logging.debug("{} is multi-valued? {}".format(
+    #     test_property_id_1,
+    #     is_multi_valued(test_property_id_1)
+    # ))
+    # logging.debug("{} is multi-valued? {}".format(
+    #     test_property_id_2,
+    #     is_multi_valued(test_property_id_2)
+    # ))
+    # logging.debug("{} is multi-valued? {}".format(
+    #     test_property_id_3,
+    #     is_multi_valued(test_property_id_3)
+    # ))
+    #
+    # # Test get_type_members()
+    # test_type_id = 'http://dbpedia.org/class/yago/WikicatBuildingsAndStructuresCompletedIn1889'
+    # logging.debug("Number of type members of type {}: {}".format(
+    #     test_type_id,
+    #     len(get_type_members(test_type_id))
+    # ))
+
+    # # Test get_resource_names()
+    # test_entity_id = "http://dbpedia.org/resource/Tiger"
+    # get_resource_name(test_entity_id)
