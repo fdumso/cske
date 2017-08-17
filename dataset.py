@@ -65,9 +65,11 @@ def get_types(entity_id):
         PREFIX e: <%s>
         SELECT DISTINCT ?type
         WHERE {
-            {e: dbo:type ?type .}
+            {{e: dbo:type ?type .}
             UNION
-            {e: rdf:type ?type .}
+            {e: rdf:type ?type .}}
+            UNION
+            {e: dbpedia2:type ?type .}
             FILTER NOT EXISTS {
                 {e: dbo:type ?subtype .}
                 UNION

@@ -9,6 +9,8 @@ from collections import Counter
 
 import dataset
 
+import numpy
+
 __author__ = "freemso"
 
 # Hyper-parameters
@@ -60,15 +62,19 @@ def extract(target_uuid):
     for attribute in siblings_attributes_counter:
         if siblings_attributes_counter[attribute] > num_siblings ** ALPHA:
             # This attribute is valid
-            pass
+            target_attributes.union(attribute)
 
-            # Inherit from parent
-            # TODO
+    # Inherit from parent
+    for p in parents:
+        p_attr = p.get_attributes()
+        target_attributes.union(p_attr)
 
-            # Merge results(from parents and from siblings) and conflict detection
-            # TODO
+    # Merge results(from parents and from siblings) and conflict detection
+    # duplicate conflict will be eliminated by attribute of set datatype
+    
 
-            # Show the result
+    # Show the result
+    print(target_attributes)
 
 
 def count_nodes_attributes(nodes):
@@ -108,14 +114,25 @@ class Node(object):
     def __hash__(self):
         return hash(self.uuid)
 
+    def get_name(self):
+        """
+        Get a human readable name of the node
+        :return: <str>
+        """
+        name = dataset.get_resource_name(self.uuid)
+        return name if len(name) > 0 else self.uuid.rsplit("/", 1)[-1]
+
     def get_parents(self):
         """
         Get parent nodes of the target node
         :return: <list> of <Node>
         """
         if not self.parents:
-            # TODO
-            pass
+            all_types = [id2node(type_id) for type_id in dataset.get_types(self.uuid)]
+            self.parents = set(all_types)
+            for type_node in all_types:
+                type_parents = dataset.get_super_classes(type_node.uuid)
+                self.parents = {node for node in self.parents if node.uuid not in type_parents}
         return self.parents
 
     def get_siblings(self):
@@ -148,6 +165,34 @@ class Node(object):
             return self.attributes
 
 
+def is_multi_valued(property_id):
+    """
+    Check if the edge is multi-valued.
+    Calculate all predicates of <SPO> in DB-pedia, those objectives values of
+    predicates that occur more than once are treated as multi-value attributes.
+    :return: <bool>
+    """
+    pairs = dataset.get_all_subjects(property_id)
+    return len(pairs) > len(set(pairs))
+
+
+# def immediate_category_filter(category_nodes):
+#     """
+#     Filter out those categories who are at a higher level in the hierarchy.
+#     Hierarchy information is available in DB-pedia Ontology.
+#     :param category_nodes: <list> of <Node>
+#     :return: <list> of <Node>, with no hierarchy conflict(granularity)
+#     """
+#     origin = category_nodes[:]
+#     result = category_nodes[:]
+#
+#     for id in origin:
+#         cur_cate = dataset.get_categories(id)  # Does Category has parent category?
+#         result = list(set(result) - (set(result) & set(cur_cate)))
+#     return result
+
+
 if __name__ == '__main__':
     logging.basicConfig(format="%(asctime)s: %(levelname)s: %(message)s")
     logging.root.setLevel(level=logging.INFO)
+    extract("http://dbpedia.org/resource/Huawei_P9")
