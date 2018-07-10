@@ -209,40 +209,40 @@ if __name__ == "__main__":
 
     # Testing
 
-    # Test get_categories()
-    test_entity_id = "http://dbpedia.org/resource/Tiger"
-    test_entity_categories = get_categories(test_entity_id)
-    logging.debug("Categories of {}:\n{}\nTotal number: {}".format(
-        test_entity_id,
-        pprint.pformat(test_entity_categories),
-        len(test_entity_categories)
-    ))
-
-    # Test get_types()
-    test_entity_id = "http://dbpedia.org/resource/Yao_Ming"
-    test_entity_types = get_types(test_entity_id)
-    logging.debug("Types of {}:\n{}\nTotal number: {}".format(
-        test_entity_id,
-        pprint.pformat(test_entity_types),
-        len(test_entity_types)
-    ))
+    # # Test get_categories()
+    # test_entity_id = "http://dbpedia.org/resource/Tiger"
+    # test_entity_categories = get_categories(test_entity_id)
+    # logging.debug("Categories of {}:\n{}\nTotal number: {}".format(
+    #     test_entity_id,
+    #     pprint.pformat(test_entity_categories),
+    #     len(test_entity_categories)
+    # ))
     #
-    # # Test is_multi_valued()
-    # test_property_id_1 = "dbo:wikiPageID"
-    # test_property_id_2 = "dbo:abstract"
-    # test_property_id_3 = "foaf:gender"
-    # logging.debug("{} is multi-valued? {}".format(
-    #     test_property_id_1,
-    #     is_multi_valued(test_property_id_1)
+    # # Test get_types()
+    # test_entity_id = "http://dbpedia.org/resource/Yao_Ming"
+    # test_entity_types = get_types(test_entity_id)
+    # logging.debug("Types of {}:\n{}\nTotal number: {}".format(
+    #     test_entity_id,
+    #     pprint.pformat(test_entity_types),
+    #     len(test_entity_types)
     # ))
-    # logging.debug("{} is multi-valued? {}".format(
-    #     test_property_id_2,
-    #     is_multi_valued(test_property_id_2)
-    # ))
-    # logging.debug("{} is multi-valued? {}".format(
-    #     test_property_id_3,
-    #     is_multi_valued(test_property_id_3)
-    # ))
+    #
+    # Test is_multi_valued()
+    test_property_id_1 = "dbo:wikiPageID"
+    test_property_id_2 = "dbo:abstract"
+    test_property_id_3 = "foaf:gender"
+    logging.debug("{} is multi-valued? {}".format(
+        test_property_id_1,
+        is_multi_valued(test_property_id_1)
+    ))
+    logging.debug("{} is multi-valued? {}".format(
+        test_property_id_2,
+        is_multi_valued(test_property_id_2)
+    ))
+    logging.debug("{} is multi-valued? {}".format(
+        test_property_id_3,
+        is_multi_valued(test_property_id_3)
+    ))
     #
     # # Test get_type_members()
     # test_type_id = 'http://dbpedia.org/class/yago/WikicatBuildingsAndStructuresCompletedIn1889'

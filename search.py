@@ -37,9 +37,9 @@ def get_search_results_Bing(keyword):
 	return int(number)
 
 #print get_search_results_Google("test")
-print get_search_results_Baidu("huawei_p9 android")
-print get_search_results_Baidu("huawei_p9 ios")
-print get_search_results_Bing("huawei_p9 android")
-print get_search_results_Bing("huawei_p9 ios")
+print(get_search_results_Baidu("huawei_p9 android"))
+print(get_search_results_Baidu("huawei_p9 ios"))
+print(get_search_results_Bing("huawei_p9 android"))
+print(get_search_results_Bing("huawei_p9 ios"))
 
 
