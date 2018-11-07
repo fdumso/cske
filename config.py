@@ -1,8 +1,5 @@
-# !/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
-    
+    Configuration of the project
 """
 
 __author__ = "freemso"

@@ -1,12 +1,9 @@
-# !/usr/bin/env python3
-# -*- coding: utf-8 -*-
 import logging
-import pprint
 
 from SPARQLWrapper import SPARQLWrapper, JSON
 
 """
-    
+    Get data from remote databases.
 """
 
 __author__ = "freemso"

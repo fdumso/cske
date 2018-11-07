@@ -1,15 +1,10 @@
-# !/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
-    
+    Actual extraction phase.
 """
 import logging
 from collections import Counter
 
 import dataset
-
-import numpy
 
 __author__ = "freemso"
 
@@ -71,7 +66,6 @@ def extract(target_uuid):
 
     # Merge results(from parents and from siblings) and conflict detection
     # duplicate conflict will be eliminated by attribute of set datatype
-    
 
     # Show the result
     print(target_attributes)
